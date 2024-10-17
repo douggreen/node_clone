@@ -252,8 +252,10 @@ function clone_action_info() {
 function clone_action_clone($original_node, $context) {
   module_load_include('inc', 'clone', 'clone.pages');
   if (clone_is_permitted($original_node->type)) {
+    $config = config('clone.settings');
+    $prefix_title = $config->get('clone_prefix_title');
     $val = !empty($context['clone_context']) ? $context['clone_context'] : array();
-    $node = _clone_node_prepare($original_node, !empty($val['prefix_title']));
+    $node = _clone_node_prepare($original_node, $prefix_title);
     if (isset($val['substitute_from']) && strlen($val['substitute_from']) && isset($val['substitute_to'])) {
       $i = (!empty($val['substitute_case_insensitive']) ? 'i' : '');
       $pattern = '#'. strtr($val['substitute_from'], array('#' => '\#')) . '#' . $i;
