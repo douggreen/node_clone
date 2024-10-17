@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Allow users to make a copy of an item of content (a node) and then edit that copy.
@@ -47,6 +48,17 @@ function clone_menu() {
     'file' => 'clone.pages.inc',
     'description' => 'Allows users to clone (copy then edit) an existing node.',
   );
+  if (!module_exists('node_clone_tab')) {
+    $config = config('clone.settings');
+    if ($config->get('clone_link') == 'tab') {
+      $type = MENU_LOCAL_TASK;
+    } else {
+      $type = MENU_LOCAL_ACTION;
+    }
+  } else {
+    $type = MENU_LOCAL_ACTION;
+  }
+  $item['type'] = MENU_LOCAL_TASK;
   $items['node/%node/clone/%clone_token'] = array(
     'access callback' => 'clone_access_cloning',
     'access arguments' => array(1, TRUE, 3),
@@ -57,7 +69,7 @@ function clone_menu() {
     'title arguments' => array(1),
     'weight' => 5,
     'file' => 'clone.pages.inc',
-    'type' => MENU_LOCAL_ACTION,
+    'type' => $type,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );
   return $items;
@@ -151,8 +163,8 @@ function clone_node_type_update($info) {
 }
 
 /**
-  * Implements hook_views_api.
-  */
+ * Implements hook_views_api.
+ */
 function clone_views_api() {
   return array(
     'api' => 3,
@@ -193,8 +205,7 @@ function clone_form_node_form_alter(&$form, $form_state, $form_id) {
 function clone_form_node_admin_content_alter(&$form, $form_state, $form_id) {
   if (config_get('clone.settings', 'clone_method') == 'prepopulate') {
     $destination = backdrop_get_destination();
-  }
-  else {
+  } else {
     $destination = array();
   }
   // The property attribute changes in the $form array depending on the user role.
@@ -258,7 +269,7 @@ function clone_action_clone($original_node, $context) {
     $node = _clone_node_prepare($original_node, $prefix_title);
     if (isset($val['substitute_from']) && strlen($val['substitute_from']) && isset($val['substitute_to'])) {
       $i = (!empty($val['substitute_case_insensitive']) ? 'i' : '');
-      $pattern = '#'. strtr($val['substitute_from'], array('#' => '\#')) . '#' . $i;
+      $pattern = '#' . strtr($val['substitute_from'], array('#' => '\#')) . '#' . $i;
       foreach (array('title') as $property) {
         $new = preg_replace($pattern, $val['substitute_to'], $node->{$property});
         if ($new) {
@@ -266,7 +277,7 @@ function clone_action_clone($original_node, $context) {
         }
       }
       foreach (array('body') as $property) {
-        foreach($node->{$property} as $lang => $row) {
+        foreach ($node->{$property} as $lang => $row) {
           foreach ($row as $delta => $data) {
             foreach (array('value', 'summary') as $key) {
               if (isset($node->{$property}[$lang][$delta][$key])) {
@@ -287,8 +298,7 @@ function clone_action_clone($original_node, $context) {
     if (module_exists('rules')) {
       rules_invoke_event('clone_node', $node, $original_node);
     }
-  }
-  else {
+  } else {
     backdrop_set_message(t('Clone failed for %title : not permitted for nodes of type %type', array('%title' => $original_node->title, '%type' => $original_node->type)), 'warning');
   }
 }
@@ -297,28 +307,28 @@ function clone_action_clone($original_node, $context) {
  * Action form.
  */
 function clone_action_clone_form($context) {
- $form['clone_context'] = array(
-   '#tree' => TRUE,
- );
- $form['clone_context']['prefix_title'] = array(
+  $form['clone_context'] = array(
+    '#tree' => TRUE,
+  );
+  $form['clone_context']['prefix_title'] = array(
     '#title' => t('Prefix title'),
     '#type' => 'checkbox',
     '#description' => t('Should cloned node tiles be prefixed?'),
     '#default_value' => isset($context['clone_context']['prefix_title']) ? $context['clone_context']['prefix_title'] : 1,
   );
- $form['clone_context']['substitute_from'] = array(
+  $form['clone_context']['substitute_from'] = array(
     '#title' => t('Substitute from string'),
     '#type' => 'textfield',
     '#description' => t('String (or regex) to substitute from in title and body.'),
     '#default_value' => isset($context['clone_context']['substitue_from']) ? $context['clone_context']['substitue_from'] : '',
   );
- $form['clone_context']['substitute_to'] = array(
+  $form['clone_context']['substitute_to'] = array(
     '#title' => t('Substitute to string'),
     '#type' => 'textfield',
     '#description' => t('String (or regex) to substitute to in title and body.'),
     '#default_value' => isset($context['clone_context']['substitue_to']) ?  $context['clone_context']['substitue_to'] : '',
   );
- $form['clone_context']['substitute_case_insensitive'] = array(
+  $form['clone_context']['substitute_case_insensitive'] = array(
     '#title' => t('Case insensitive substitution'),
     '#type' => 'checkbox',
     '#description' => t('Should the substituion match be case insensitive?'),
