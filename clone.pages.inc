@@ -8,6 +8,9 @@
  * Menu callback to configure module settings.
  */
 function clone_settings($form, &$form_state) {
+  if (module_exists('node_clone_tab')) {
+    backdrop_set_message(t('Node Clone module already implements clone link as tab. You can disable Node Clone Tab module and set the link as tab in this form. Otherwise, Node Clone Tab will take over Node Clone.'), 'error');
+  }
   $config = config('clone.settings');
 
   $form['#config'] = 'clone.settings';
@@ -41,18 +44,31 @@ function clone_settings($form, &$form_state) {
     '#default_value' => (int) $config->get('clone_menu_links'),
     '#description' => t('Should any menu link for a node also be cloned?'),
   );
-  $form['basic']['clone_use_node_type_name'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Use node type name in clone link'),
-    '#default_value' => (int) $config->get('clone_use_node_type_name'),
-    '#description' => t('If checked, the link to clone the node will contain the node type name, for example, "Clone this article", otherwise it will read "Clone content".'),
-  );
+
   $form['basic']['clone_prefix_title'] = array(
     '#type' => 'checkbox',
+    '#prefix' => '<label for="edit-clone-prefix-title">' .  t('Prefix title') . '</label>',
     '#title' => t('Prefix title'),
     '#default_value' => (bool) $config->get('clone_prefix_title'),
     '#description' => t('Should cloned node titles be prefixed?'),
   );
+  if (!module_exists('node_clone_tab')) {
+    $form['basic']['clone_link'] = array(
+      '#type' => 'radios',
+      '#title' => t('How to show the clone link'),
+      '#options' => array('link' => t('As action link under tabs'), 'tab' => t('As tab')),
+      '#default_value' => $config->get('clone_link'),
+    );
+  }
+
+  $form['basic']['clone_use_node_type_name'] = array(
+    '#type' => 'checkbox',
+    '#prefix' => '<label for="edit-clone-use-node-type-name">' .  t('Use node type name in clone link') . '</label>',
+    '#title' => t('Use node type name in clone link'),
+    '#default_value' => (int) $config->get('clone_use_node_type_name'),
+    '#description' => t('If checked, the link to clone the node will contain the node type name, for example, "Clone this article", otherwise it will read "Clone content".'),
+  );
+
 
   $form['publishing'] = array(
     '#type' => 'fieldset',
@@ -81,7 +97,28 @@ function clone_settings($form, &$form_state) {
     '#description' => t('Select any node types which should <em>never</em> be cloned. In other words, all node types where cloning will fail.'),
   );
 
+  $form['#submit'][] = 'node_clone_settings_submit';
+
   return system_settings_form($form);
+}
+
+/**
+ * Custom submit handler for node_clone settings.
+ */
+function node_clone_settings_submit($form, &$form_state) {
+
+  // Clear all caches including the menu cache.
+  cache_flush('menu');
+  // Schedule the menu rebuild to happen at the end of the request.
+  backdrop_register_shutdown_function('node_clone_delayed_menu_rebuild');
+
+}
+
+/**
+ * Function to rebuild the menu during shutdown.
+ */
+function node_clone_delayed_menu_rebuild() {
+  menu_rebuild();
 }
 
 /**
